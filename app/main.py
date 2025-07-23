@@ -1,13 +1,17 @@
+# app/main.py
+
 from fastapi import FastAPI, Depends, HTTPException, BackgroundTasks
 # Import sqlite3 module
 import sqlite3 # ADDED: Import sqlite3
+# Import CORS middleware
+from fastapi.middleware.cors import CORSMiddleware # <-- Added Import
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 import time
 from typing import List, Dict, Any
 import logging
-#import io
-#import base64
+# import io
+# import base64
 
 from app.database import get_db
 from app.schemas import QuestionRequest, SQLResponse, QueryResult
@@ -20,6 +24,22 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="E-commerce AI Agent", version="1.0.0")
+
+# Configure CORS settings
+origins = [
+    "*",  # Allows all origins - suitable for development.
+          # For production, specify your frontend URL(s), e.g.,
+          # "http://localhost:3000", "https://yourdomain.com"
+] # <-- Fixed comment formatting
+
+app.add_middleware(
+    CORSMiddleware, # <-- This should now work
+    allow_origins=origins, # List of allowed origins
+    allow_credentials=True, # Allow cookies/sessions if needed
+    allow_methods=["*"], # Allow all HTTP methods (GET, POST, etc.)
+    allow_headers=["*"], # Allow all headers (like Content-Type)
+)
+
 
 # Global variables
 text_to_sql_agent = None
@@ -77,6 +97,7 @@ async def ask_question(request: QuestionRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail="AI Agent not initialized")
 
     start_time = time.time()
+    sql_query = "" # Initialize sql_query for error handling
     try:
         # 1. Generate SQL
         sql_query = text_to_sql_agent.generate_sql_query(request.question)
@@ -110,11 +131,11 @@ async def ask_question(request: QuestionRequest, db: Session = Depends(get_db)):
         logger.error(f"LLM Generation Error for question '{request.question}': {ve}")
         raise HTTPException(status_code=400, detail=f"Failed to generate a valid SQL query: {str(ve)}")
     except sqlite3.OperationalError as db_err: # Catch specific database errors
-         logger.error(f"Database Execution Error for query '{sql_query}' (question: {request.question}): {db_err}")
+         logger.error(f"Database Execution Error for query '{sql_query}' (question: {request.question}): {db_err}") # sql_query is now defined
          raise HTTPException(status_code=400, detail=f"Database error executing query: {str(db_err)}")
     except Exception as e:
-        logger.error(f"Error in /ask: {e}")
-        raise HTTPException(status_code=400, detail=f"Query execution error: {str(e)}")
+        logger.error(f"Unexpected Error in /ask for question '{request.question}': {e}", exc_info=True) # Log full traceback
+        raise HTTPException(status_code=500, detail=f"An internal error occurred: {str(e)}") # Generic 500 for unexpected issues
 
 @app.get("/health")
 async def health_check():
