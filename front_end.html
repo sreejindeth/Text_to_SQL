@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>E-commerce AI Agent - Interactive Viewer</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        #input-section { margin-bottom: 20px; }
+        #question-input { width: 70%; padding: 10px; }
+        #ask-button { padding: 10px 20px; }
+        .section { margin-top: 20px; }
+        #chart { width: 100%; height: 500px; border: 1px solid #ddd; margin-top: 10px; }
+        pre { background-color: #f5f5f5; padding: 10px; white-space: pre-wrap; max-height: 300px; overflow-y: auto; }
+        .loading { color: blue; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <h1>E-commerce AI Agent - Interactive Viewer</h1>
+    <div id="input-section">
+        <input type="text" id="question-input" placeholder="Enter your question here...">
+        <button id="ask-button">Ask AI</button>
+    </div>
+
+    <div class="section">
+        <h2>Question & SQL:</h2>
+        <div id="question-output"></div>
+        <div id="sql-output"></div>
+    </div>
+
+    <div class="section">
+        <h2>Results:</h2>
+        <pre id="results-output"></pre>
+    </div>
+
+    <div class="section">
+        <h2>Chart:</h2>
+        <div id="chart-output">Ask a question to see results and potential chart.</div>
+        <div id="chart"></div>
+    </div>
+
+    <script>
+        async function askAI() {
+            const questionInput = document.getElementById('question-input');
+            const questionOutput = document.getElementById('question-output');
+            const sqlOutput = document.getElementById('sql-output');
+            const resultsOutput = document.getElementById('results-output');
+            const chartOutput = document.getElementById('chart-output');
+            const chartDiv = document.getElementById('chart');
+            const askButton = document.getElementById('ask-button');
+
+            const question = questionInput.value.trim();
+            if (!question) {
+                alert("Please enter a question.");
+                return;
+            }
+
+            // Clear previous results
+            questionOutput.textContent = '';
+            sqlOutput.textContent = '';
+            resultsOutput.textContent = '';
+            chartOutput.textContent = 'Loading...';
+            chartOutput.className = 'loading';
+            chartDiv.innerHTML = '';
+
+            // Disable button while loading
+            askButton.disabled = true;
+            askButton.textContent = 'Asking...';
+
+            try {
+                const response = await fetch('http://localhost:8000/ask', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ question: question })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API Error: ${response.status} ${response.statusText}`);
+                }
+
+                const data = await response.json();
+
+                // Display results
+                questionOutput.innerHTML = `<strong>Question:</strong> ${data.question}`;
+                sqlOutput.innerHTML = `<strong>Generated SQL:</strong> <code>${data.sql_query}</code>`;
+                resultsOutput.textContent = JSON.stringify(data.results, null, 2);
+
+                // Display chart if available
+                const chartData = data.chart_data;
+                const chartType = data.chart_type;
+
+                if (chartData && Object.keys(chartData).length > 0) {
+                    chartOutput.textContent = `Chart Type: ${chartType}`;
+                    chartOutput.className = ''; // Remove loading class
+                    console.log("Rendering chart...");
+                    Plotly.newPlot('chart', chartData.data, chartData.layout);
+                } else {
+                    chartOutput.textContent = 'No chart data available for this query.';
+                    chartOutput.className = 'error';
+                    chartDiv.innerHTML = '';
+                }
+
+            } catch (error) {
+                console.error('Error:', error);
+                questionOutput.innerHTML = `<strong>Question:</strong> ${question}`;
+                sqlOutput.textContent = '';
+                resultsOutput.textContent = '';
+                chartOutput.textContent = `Error: ${error.message}`;
+                chartOutput.className = 'error';
+                chartDiv.innerHTML = '';
+            } finally {
+                // Re-enable button
+                askButton.disabled = false;
+                askButton.textContent = 'Ask AI';
+            }
+        }
+
+        document.getElementById('ask-button').addEventListener('click', askAI);
+
+        // Allow pressing Enter in the input field
+        document.getElementById('question-input').addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                askAI();
+            }
+        });
+    </script>
+</body>
+</html>

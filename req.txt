@@ -1,0 +1,12 @@
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+pandas==2.1.3
+sqlalchemy==2.0.23
+google-generativeai==0.5.2 # For Gemini API
+python-dotenv==1.0.0
+pydantic==2.5.0
+tiktoken==0.5.2 # For token counting (optional but useful)
+# For bonus visualizations:
+matplotlib==3.8.2
+plotly==5.18.0
+kaleido==0.2.1 # For saving Plotly images

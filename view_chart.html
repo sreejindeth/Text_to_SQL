@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>E-commerce AI Agent - Chart Viewer</title>
+    <!-- Load Plotly.js library -->
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+</head>
+<body>
+    <h1>AI Agent Response</h1>
+    <div id="question"></div>
+    <div id="sql"></div>
+    <h2>Results:</h2>
+    <pre id="results"></pre>
+    <h2>Chart:</h2>
+    <div id="chart" style="width:100%;height:500px;"></div> <!-- Container for the chart -->
+
+    <script>
+        // Function to load and display the chart
+        async function loadAndDisplayChart() {
+            try {
+                // 1. Fetch the JSON response from your file
+                const response = await fetch('response_with_chart.json');
+                const data = await response.json();
+
+                // 2. Display question and SQL
+                document.getElementById('question').innerHTML = `<h3>Question: ${data.question}</h3>`;
+                document.getElementById('sql').innerHTML = `<p><strong>Generated SQL:</strong> ${data.sql_query}</p>`;
+
+                // 3. Display results in a readable format
+                document.getElementById('results').textContent = JSON.stringify(data.results, null, 2);
+
+                // 4. Check if chart data exists
+                const chartData = data.chart_data;
+                const chartDiv = document.getElementById('chart');
+
+                if (chartData && Object.keys(chartData).length > 0) {
+                    console.log("Rendering chart...");
+                    console.log("Chart Type:", data.chart_type);
+                    // 5. Use Plotly to render the chart from the JSON data
+                    // Plotly.newPlot takes the div ID and the data/layout from the JSON
+                    Plotly.newPlot('chart', chartData.data, chartData.layout);
+                } else {
+                    chartDiv.innerHTML = '<p>No chart data available for this query or chart type not supported.</p>';
+                    console.log("No chart data found in response.");
+                }
+            } catch (error) {
+                console.error('Error loading or parsing JSON:', error);
+                document.getElementById('chart').innerHTML = '<p>Error loading chart data.</p>';
+                // Also display error in results area
+                document.getElementById('results').textContent = 'Error: ' + error.message;
+            }
+        }
+
+        // Call the function when the page loads
+        window.onload = loadAndDisplayChart;
+    </script>
+</body>
+</html>
